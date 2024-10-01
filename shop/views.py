@@ -1,4 +1,5 @@
 from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -307,9 +308,19 @@ class BulkProductCreateDeleteView(APIView):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    # Define the expected request body for bulk delete
+    @swagger_auto_schema(
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'ids': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_INTEGER))
+            },
+            required=['ids']
+        )
+    )
     # Bulk Product Deletion
     def delete(self, request):
-        product_ids = request.data('ids', [])
+        product_ids = request.data.get('ids', [])
         if not product_ids:
             return Response({"error": "No IDs provided"}, status=status.HTTP_400_BAD_REQUEST)
 

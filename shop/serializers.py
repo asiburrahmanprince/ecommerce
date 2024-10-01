@@ -1,3 +1,5 @@
+from decimal import Decimal, InvalidOperation
+
 from django.db import IntegrityError
 from rest_framework import serializers
 from .models import User, Shopkeeper, Customer, Shop, Product, Review, Order, OrderItem, ShopAssignment
@@ -176,6 +178,18 @@ class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = ['id', 'name', 'description', 'price', 'stock_quantity', 'shop', 'added_by']
+
+    def validate_price(self, value):
+        # If the price is sent as a string, try converting it to a Decimal
+        if isinstance(value, str):
+            try:
+                value = Decimal(value)
+            except InvalidOperation:
+                raise serializers.ValidationError("Invalid price format. Please provide a valid decimal.")
+        # Ensure the price is a positive number
+        if value < 0:
+            raise serializers.ValidationError("Price must be a positive number.")
+        return value
 
     def create(self, validated_data):
         # Assign the shopkeeper to the product
