@@ -12,17 +12,6 @@ class LoginSerializer(serializers.ModelSerializer):
         fields = ["id", "email", "password"]
 
 
-# class UserSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = User
-#         fields = ['id', 'email', 'name', 'password', 'role']
-#
-#     def create(self, validated_data):
-#         user = User.objects.create_user(email=validated_data['email'],
-#                                        name=validated_data['name'], password=validated_data['password'], role=validated_data['role'])
-#         user.save()
-#         return user
-
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -174,10 +163,11 @@ class ShopSerializer(serializers.ModelSerializer):
 class ProductSerializer(serializers.ModelSerializer):
     added_by = ShopkeeperSerializer(read_only=True)
     price = serializers.DecimalField(max_digits=10, decimal_places=2)
+    shop_name = serializers.CharField(source='shop.name', read_only=True)
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'description', 'price', 'stock_quantity', 'shop', 'added_by']
+        fields = ['id', 'name', 'description', 'price', 'stock_quantity', 'shop', 'shop_name', 'added_by']
 
     def validate_price(self, value):
         # If the price is sent as a string, try converting it to a Decimal
@@ -197,6 +187,21 @@ class ProductSerializer(serializers.ModelSerializer):
         shopkeeper = Shopkeeper.objects.get(user=request.user)
         product = Product.objects.create(added_by=shopkeeper, **validated_data)
         return product
+
+
+class ProductSearchSerializer(serializers.Serializer):
+    name = serializers.CharField(required=False)
+    min_price = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
+    max_price = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
+    shop_name = serializers.CharField(required=False)
+
+    def validate(self, data):
+        min_price = data.get('min_price')
+        max_price = data.get('max_price')
+
+        if min_price and max_price and min_price > max_price:
+            raise serializers.ValidationError("min_price cannot be greater than max_price.")
+        return data
 
 
 class ReviewSerializer(serializers.ModelSerializer):

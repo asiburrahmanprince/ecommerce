@@ -1,3 +1,7 @@
+from re import search
+from django.db import connection
+from django.db.models import Q
+
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from rest_framework import permissions, status
@@ -7,7 +11,8 @@ from .models import (User, Shop, Shopkeeper, Customer,
                      Product, Review, Order, OrderItem, ShopAssignment)
 
 from .serializers import (UserSerializer, ShopSerializer, ShopkeeperSerializer, CustomerSerializer,
-                          ProductSerializer, ReviewSerializer, OrderSerializer, OrderItemSerializer)
+                          ProductSerializer, ReviewSerializer, OrderSerializer, OrderItemSerializer,
+                          ProductSearchSerializer)
 
 class RegisterView(APIView):
 
@@ -121,16 +126,6 @@ class ShopDetailView(APIView):
         serializer = ShopSerializer(shop)
         return Response(serializer.data)
 
-    # def put(self, request, pk):
-    #     shop = self.get_object(pk)
-    #     if shop is None:
-    #         return Response({"error": "Shop not found"},status=status.HTTP_404_NOT_FOUND)
-    #     serializer = ShopSerializer(shop, data=request.data)
-    #     if serializer.is_valid():
-    #         serializer.save()
-    #         return Response(serializer.data)
-    #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
     @swagger_auto_schema(request_body=ShopSerializer)
     def put(self, request, pk):
         shop = self.get_object(pk)
@@ -152,7 +147,6 @@ class ShopDetailView(APIView):
 
             return Response(shop_serializer.data, status=status.HTTP_200_OK)
         return Response(shop_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 
     def delete(self, request, pk):
@@ -266,6 +260,39 @@ class CustomerDetailView(APIView):
         customer.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+class ProductSearchView(APIView):
+    def get(selfself, request):
+        search_serializer = ProductSearchSerializer(data=request.query_params)
+        if search_serializer.is_valid():
+            name = search_serializer.validated_data.get('name')
+            description = search_serializer.validated_data.get('description')
+            min_price = search_serializer.validated_data.get('min_price')
+            max_price = search_serializer.validated_data.get('max_price')
+            shop_name = search_serializer.validated_data.get('shop_name')
+
+            query = Q()
+            if name:
+                query &= Q(name__icontains=name)
+            if description:
+                query &= Q(description__icontains=description)
+            if min_price:
+                query &= Q(price__gte=min_price)
+            if max_price:
+                query &= Q(price__lte=max_price)
+            if shop_name:
+                query &= Q(shop__name__icontains=shop_name)
+
+            products = Product.objects.filter(query)
+            products_serializer = ProductSerializer(products, many=True)
+
+            # Log number of queries made during this view execution
+            num_queries = len(connection.queries)
+            print(f"Number of queries executed: {num_queries}")
+
+            return Response(products_serializer.data, status=status.HTTP_200_OK)
+
+        return Response(search_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 class ProductListCreateView(APIView):
     serializer_class = ProductSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -327,7 +354,6 @@ class BulkProductCreateDeleteView(APIView):
         # Delete products by their IDs
         Product.objects.filter(id__in=product_ids).delete()
         return Response({"message": "Products deleted successfully"},status=status.HTTP_204_NO_CONTENT)
-
 
 class ProductDetailView(APIView):
     permission_classes = [permissions.IsAuthenticated]

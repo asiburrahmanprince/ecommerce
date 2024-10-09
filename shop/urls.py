@@ -2,7 +2,8 @@ from django.urls import path
 from .views import (UserListCreateView, UserDetailView, ShopListCreateView, ShopDetailView, ShopkeeperListCreateView,
                     ShopkeeperDetailView, CustomerListCreateView, CustomerDetailView, ProductListCreateView,
                     ProductDetailView, ReviewListCreateView, ReviewDetailView, OrderListCreateView, OrderDetailView,
-                    OrderItemListCreateView, OrderItemDetailView, RegisterView, BulkProductCreateDeleteView)
+                    OrderItemListCreateView, OrderItemDetailView, RegisterView, BulkProductCreateDeleteView,
+                    ProductSearchView)
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 urlpatterns = [
@@ -30,6 +31,7 @@ urlpatterns = [
     path('customers/<int:pk>/', CustomerDetailView.as_view(), name='customer-detail'),
 
     # Product URLs
+    path('products/search/', ProductSearchView.as_view(), name='product-search'),
     path('products/', ProductListCreateView.as_view(), name='product-list-create'),
     path('products/<int:pk>/', ProductDetailView.as_view(), name='product-detail'),
 
